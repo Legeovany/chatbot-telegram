@@ -17,7 +17,8 @@ O fluxo criado permite que o bot:
 - n8n para orquestrar o workflow (2.9.4)
 - Telegram Bot API para comunicação com o usuário;
 - OpenWeatherMap API para obtenção dos dados climáticos;
-- Google Gemini para transformar os dados em mensagens mais amigáveis.
+- Google Gemini para transformar os dados em mensagens mais amigáveis;
+- ngrok para expor o webhook localmente com HTTPS.
 
 ## Estrutura do repositório
 
