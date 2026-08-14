@@ -1,0 +1,319 @@
+{
+  "name": "workflow-chatbot-telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.statusCode.toString() }}",
+              "value2": "200"
+            },
+            {
+              "value1": "={{ $json.city }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "2208f4a9-8314-4e20-8592-d0d011d6db4c",
+      "name": "Validar Resposta",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Entrada do Telegram').item.json.message.chat.id }}",
+        "text": "={{ $json?.content?.parts[0]?.text || $('Processar Dados').item.json.fallback_message }}",
+        "additionalFields": {}
+      },
+      "id": "5652b8e9-2eb6-429a-b837-ac4e0674e56b",
+      "name": "Enviar Resposta",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        352,
+        0
+      ],
+      "webhookId": "421515f8-0c94-4d57-a963-582ef93644e8",
+      "credentials": {
+        "telegramApi": {
+          "id": "wdWH8rxdnNl8flQA",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Entrada do Telegram').item.json.message.from.id }}",
+        "text": "Cidade não encontrada. Use o formato Cidade,UF (ex.: São Paulo,SP).",
+        "additionalFields": {}
+      },
+      "id": "f4702c11-5340-461f-8152-1b32c311d3d0",
+      "name": "Aviso de Erro",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        64,
+        192
+      ],
+      "webhookId": "08b5d37d-446e-4d27-a89c-2080da436eee",
+      "credentials": {
+        "telegramApi": {
+          "id": "wdWH8rxdnNl8flQA",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.openweathermap.org/data/2.5/weather",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openWeatherMapApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.queue }}"
+            },
+            {
+              "name": "units",
+              "value": "metric"
+            },
+            {
+              "name": "lang",
+              "value": "pt_br"
+            },
+            {
+              "name": "appid",
+              "value": "={{ $env.OPENWEATHER_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -672,
+        96
+      ],
+      "id": "e0226ea3-826c-4941-a25a-fcf3933abae7",
+      "name": "Consulta Climática OpenWeather",
+      "retryOnFail": true,
+      "executeOnce": false,
+      "alwaysOutputData": false,
+      "credentials": {
+        "openWeatherMapApi": {
+          "id": "JuM81oi3MNiIlyk0",
+          "name": "OpenWeatherMap account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "queue",
+              "value": "={{ $json.message.text.split(\",\")[0].toLowerCase().trim().normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\").replace(/\\s+/g, \" \") }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "95040ea5-2ff8-47a3-873f-c031a8ae0d0a",
+      "name": "Preparar Entrada",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -896,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1120,
+        96
+      ],
+      "id": "8c736568-d4d4-42bb-9cdf-1806cf29c6f2",
+      "name": "Entrada do Telegram",
+      "webhookId": "d7d3ccd1-9643-4f31-9ac0-8b1215b5bd7e",
+      "credentials": {
+        "telegramApi": {
+          "id": "wdWH8rxdnNl8flQA",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const weatherData = $input.first().json;\n\nconst cityName = weatherData?.name;\nconst temperature = weatherData?.main?.temp;\nconst description = weatherData?.weather?.[0]?.description;\nconst statusCode = weatherData?.cod || $input.first().json?.error?.status;\nconst country = weatherData?.sys?.country;\nconst feelsLike = weatherData?.main?.feels_like;\nconst windSpeed = weatherData?.wind?.speed;\nconst humidity = weatherData?.main?.humidity;\n\nconst tempRounded = temperature !== null && temperature !== undefined ? Math.round(temperature) : null;\nconst feelsRounded = feelsLike !== null && feelsLike !== undefined ? Math.round(feelsLike) : null;\n\nlet emoji = \"🌡️\";\nif (description?.includes(\"chuva\") || description?.includes(\"chuvisco\")) emoji = \"🌧️\";\nelse if (description?.includes(\"nublado\") || description?.includes(\"nuvens\")) emoji = \"☁️\";\nelse if (description?.includes(\"limpo\") || description?.includes(\"céu\")) emoji = \"☀️\";\nelse if (description?.includes(\"neve\")) emoji = \"❄️\";\nelse if (description?.includes(\"trovoada\")) emoji = \"⛈️\";\n\nconst fallbackMessage = `${emoji} Clima em ${cityName} (${country})\\n🌡️ Temperatura: ${tempRounded}°C\\n🤗 Sensação: ${feelsRounded}°C\\n💧 Humidade: ${humidity}%\\n💨 Vento: ${windSpeed} m/s\\n${emoji} ${description}`;\n\nconst error = $input.first().json?.error?.description\n\nreturn {\n  json: {\n    city: cityName,\n    country: country,\n    temperature: temperature,\n    temperatureRounded: tempRounded,\n    feelsLike: feelsLike,\n    windSpeed: windSpeed,\n    humidity: humidity,\n    description: description,\n    fallback_message: fallbackMessage,\n    statusCode: statusCode,\n    error: error\n  },\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        96
+      ],
+      "id": "1b31b4fe-a382-4287-9faa-c95b5933cbdb",
+      "name": "Processar Dados"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.1-flash-lite",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.1-flash-lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Dados:\n- Cidade: {{ $json.city }}\n- Temperatura: {{ $json.temperatureRounded }}°C\n- Sensação térmica: {{ $json.feelsLike }}°C\n- Condição: {{ $json.description }}\n- Umidade: {{ $json.humidity }}%\n- Vento: {{ $json.windSpeed }} m/s"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "systemMessage": "=Você é um assistente de clima responsável por transformar dados meteorológicos em uma mensagem curta, natural e amigável em português brasileiro.\n\nInstruções:\n1. Crie uma mensagem natural e amigável em português brasileiro.\n2. Informe claramente o nome da cidade e a temperatura atual com base exclusivamente nos dados fornecidos.\n3. Use emojis apropriados à condição climática, quando essa informação estiver disponível.\n4. Forneça uma dica prática relacionada às condições climáticas informadas, somente quando fizer sentido.\n5. Nunca invente ou presuma informações sobre temperatura, chuva, vento, sensação térmica ou outras condições que não tenham sido fornecidas.\n6. Mantenha a mensagem concisa, com no máximo 5 linhas.\n7. NÃO cumprimente a cidade como se fosse uma pessoa.\n8. NÃO use saudações como \"E aí\", \"Olá\", \"Oi\", \"Bom dia\" ou similares no início da mensagem.\n9. Refira-se à cidade apenas como localização. Exemplo correto: \"Em São Paulo, a temperatura atual é de 25°C.\"\n10. NÃO assuma, invente ou mencione o nome do usuário.\n11. Não altere nem contradiga os dados meteorológicos recebidos.\n12. Responda sempre em português brasileiro.",
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8e4d0c12-6292-4bf4-9e5b-dc29f75eb2e7",
+      "name": "Criar Mensagem IA",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "oxwEr7jGBrFYbjAE",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Validar Resposta": {
+      "main": [
+        [
+          {
+            "node": "Criar Mensagem IA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aviso de Erro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consulta Climática OpenWeather": {
+      "main": [
+        [
+          {
+            "node": "Processar Dados",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Processar Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Entrada": {
+      "main": [
+        [
+          {
+            "node": "Consulta Climática OpenWeather",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Entrada do Telegram": {
+      "main": [
+        [
+          {
+            "node": "Preparar Entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar Dados": {
+      "main": [
+        [
+          {
+            "node": "Validar Resposta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar Mensagem IA": {
+      "main": [
+        [
+          {
+            "node": "Enviar Resposta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar Resposta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "ff1352b4-e920-4f64-a303-eb0996c67eba",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "714b46a08186b1851ba7c2470857886a5dfdd6f606af93373ae2551dfa93a5e0"
+  },
+  "nodeGroups": [],
+  "id": "RElrzmLf1h6PEnNQ",
+  "tags": []
+}
