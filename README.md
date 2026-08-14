@@ -6,7 +6,7 @@ Este projeto reúne um bot do Telegram, um workflow no n8n e integrações com O
 
 O fluxo criado permite que o bot:
 
-- receba mensagens com nomes de cidades brasileiras;
+- receba mensagens com nomes de cidades;
 - consulte informações atuais de clima via OpenWeatherMap;
 - organize os dados em uma estrutura mais legível;
 - gerar respostas mais humanas com Gemini, quando a integração estiver disponível;
